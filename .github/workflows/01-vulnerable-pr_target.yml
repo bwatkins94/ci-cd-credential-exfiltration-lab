@@ -1,0 +1,33 @@
+name: 01 - Vulnerable PR Target (DO NOT COPY TO PROD)
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+# Bad: default token perms often too broad + we will also inject a secret.
+permissions: write-all
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # Catastrophic pattern: pull_request_target + checkout PR HEAD.
+      - name: Checkout PR code (UNTRUSTED)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Simulated secret injected into environment
+        run: |
+          echo "Running tests with secrets available (bad)"
+        env:
+          DEMO_SECRET: ${{ secrets.DEMO_SECRET }}
+
+      - name: Run tests (attacker can edit scripts/test.sh in PR)
+        run: bash scripts/test.sh
+    
+      - name: Upload artifacts (attacker cna hide stuff here too)
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: artifact.txt
